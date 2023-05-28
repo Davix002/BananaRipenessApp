@@ -28,7 +28,6 @@ import java.io.IOException
 import android.os.Environment
 import android.widget.Toast
 import androidx.annotation.RequiresApi
-import androidx.compose.runtime.Composable
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -44,7 +43,10 @@ class MainActivity : ComponentActivity() {
 
     private var currentPhotoPath = ""
 
-    private lateinit var response: MutableState<String>
+
+    private var dataState: MutableState<String> = mutableStateOf("")
+    private var mensajeState: MutableState<String> = mutableStateOf("")
+    private var precioState: MutableState<String> = mutableStateOf("")
 
     private val takePicture = registerForActivityResult(ActivityResultContracts.TakePicture()) { isSuccess ->
         if (isSuccess) {
@@ -85,7 +87,6 @@ class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        response = mutableStateOf("")
         imageUri = mutableStateOf(Uri.EMPTY)
 
         setContent {
@@ -99,7 +100,10 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                Text(response.value, modifier = Modifier.align(Alignment.Center))
+                Text(dataState.value, modifier = Modifier.align(Alignment.TopCenter))
+                Text(mensajeState.value, modifier = Modifier.align(Alignment.Center))
+                Text(precioState.value, modifier = Modifier.align(Alignment.BottomCenter))
+
 
                 Button(
                     onClick = {
@@ -161,13 +165,18 @@ class MainActivity : ComponentActivity() {
                     val responseData = response.body?.string() ?: ""
                     val jsonObject = JSONObject(responseData)
                     val data = jsonObject.optString("data")
+                    val mensaje = jsonObject.optString("mensaje") // Deserializando "mensaje"
+                    val precio = jsonObject.optString("precio") // Deserializando "precio"
 
                     // Actualizar la interfaz de usuario en el hilo principal
                     runOnUiThread {
-                        this@MainActivity.response.value = data // Use this to set the value
+                        dataState.value = "Banano $data" // Actualizando estado de data
+                        mensajeState.value = mensaje // Actualizando estado de mensaje
+                        precioState.value = "A tan solo $precio" // Actualizando estado de precio
                     }
                 }
             }
+
         })
     }
 }
