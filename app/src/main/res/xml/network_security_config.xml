@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">ec2-54-211-202-101.compute-1.amazonaws.com</domain>
+        <domain includeSubdomains="true">192.168.1.104</domain>
+        <domain includeSubdomains="true">192.168.205.137</domain>
+        <domain includeSubdomains="true">ec2-52-90-112-14.compute-1.amazonaws.com</domain>
+    </domain-config>
+</network-security-config>
