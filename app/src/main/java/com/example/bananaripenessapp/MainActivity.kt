@@ -37,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
@@ -47,6 +48,10 @@ import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
@@ -128,48 +133,46 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun sendImage(imageFile: File) {
-        // Leer los bytes del archivo de imagen
-        val imageBytes = imageFile.readBytes()
-        // Codificar los bytes a un string base64
-        val base64Image = Base64.encodeToString(imageBytes, Base64.DEFAULT)
-        val json = JSONObject()
-        json.put("string_base", base64Image)
-
-        val body = json.toString().toRequestBody("application/json".toMediaTypeOrNull())
-
-        val request = Request.Builder()
-            /*.url("http://ec2-54-211-202-101.compute-1.amazonaws.com:5000/prediction")*/
-            /*.url("http://192.168.1.104:5000/prediction")*/
-            /*.url("http://192.168.205.137:5000/prediction")*/
-            .url("http://ec2-52-90-112-14.compute-1.amazonaws.com:5000/prediction")
-            .post(body)
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                e.printStackTrace()
+        // Use launch to start a new coroutine
+        CoroutineScope(Dispatchers.IO).launch {
+            // Update UI state to be empty
+            withContext(Dispatchers.Main) {
+                dataState.value = ""
+                mensajeState.value = ""
+                precioState.value = ""
             }
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    if (!response.isSuccessful) throw IOException("Unexpected code $response")
 
-                    val responseData = response.body?.string() ?: ""
-                    val jsonObject = JSONObject(responseData)
-                    val data = jsonObject.optString("data")
-                    val mensaje = jsonObject.optString("mensaje") // Deserializando "mensaje"
-                    val precio = jsonObject.optString("precio") // Deserializando "precio"
+            val imageBytes = imageFile.readBytes()
+            val base64Image = Base64.encodeToString(imageBytes, Base64.DEFAULT)
+            val json = JSONObject()
+            json.put("string_base", base64Image)
 
-                    // Actualizar la interfaz de usuario en el hilo principal
-                    runOnUiThread {
-                        dataState.value = "Banano $data" // Actualizando estado de data
-                        mensajeState.value = mensaje // Actualizando estado de mensaje
-                        precioState.value = "A tan solo $precio" // Actualizando estado de precio
-                    }
+            val body = json.toString().toRequestBody("application/json".toMediaTypeOrNull())
+
+            val request = Request.Builder()
+                .url("http://ec2-18-205-229-14.compute-1.amazonaws.com:5000/prediction")
+                .post(body)
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) throw IOException("Unexpected code $response")
+
+                val responseData = response.body?.string() ?: ""
+                val jsonObject = JSONObject(responseData)
+                val data = jsonObject.optString("data")
+                val mensaje = jsonObject.optString("mensaje") // Deserializando "mensaje"
+                val precio = jsonObject.optString("precio") // Deserializando "precio"
+
+                // Update UI on the main thread
+                withContext(Dispatchers.Main) {
+                    dataState.value = "Banano $data" // Actualizando estado de data
+                    mensajeState.value = mensaje // Actualizando estado de mensaje
+                    precioState.value = "A tan solo $$precio /lib " // Actualizando estado de precio
                 }
             }
-
-        })
+        }
     }
+
 }
 
 @Preview
@@ -179,17 +182,20 @@ fun App(    dataState: MutableState<String> = mutableStateOf(""),
             precioState: MutableState<String> = mutableStateOf(""),
             imageUri: MutableState<Uri> = mutableStateOf(Uri.EMPTY),
             onButtonClick: () -> Unit = {}){
+
+
     LazyColumn(modifier = Modifier
         .fillMaxSize()
         .background(Color.White)
-        .padding(16.dp)){ // Agregado padding a todos los elementos en el LazyColumn
+        .padding(14.dp)){ // Agregado padding a todos los elementos en el LazyColumn
         item{
             Text(text = "Banana Ripeness Classifier",
                 modifier = Modifier
-                    .fillMaxWidth().fillMaxSize()
-                    .padding(top = 16.dp, bottom = 16.dp), // Agregado padding superior e inferior al texto
+                    .fillMaxWidth()
+                    .padding(top = 12.dp, bottom = 12.dp), // Agregado padding superior e inferior al texto
                 textAlign = TextAlign.Center,
-                fontSize = 32.sp
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold
             )
             if (imageUri.value != Uri.EMPTY) {
                 Image(
@@ -198,9 +204,9 @@ fun App(    dataState: MutableState<String> = mutableStateOf(""),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(400.dp)
-                        .padding(16.dp)
-                        .clip(RoundedCornerShape(10.dp)) // Bordes redondeados
-                        .shadow(5.dp), // Sombra
+                        .padding(14.dp)
+                        .clip(RoundedCornerShape(10.dp)), // Bordes redondeados
+
                     contentScale = ContentScale.Crop
                 )
             } else {
@@ -209,20 +215,18 @@ fun App(    dataState: MutableState<String> = mutableStateOf(""),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(400.dp)
-                        .padding(16.dp)
                         .clip(RoundedCornerShape(10.dp)) // Bordes redondeados
-                        .shadow(5.dp), // Sombra
+                        .shadow(2.dp), // Sombra
                 )
             }
 
             Column(modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp), // Agregado padding a la columna
+                .fillMaxWidth(),// Agregado padding a la columna
                 horizontalAlignment = Alignment.CenterHorizontally) {
 
-                Text(dataState.value, modifier = Modifier.padding(top = 16.dp),fontSize = 28.sp)
-                Text(mensajeState.value, modifier = Modifier.padding(top = 16.dp))
-                Text(precioState.value, modifier = Modifier.padding(top = 16.dp))
+                Text(dataState.value, modifier = Modifier.padding(top = 8.dp),fontSize = 28.sp)
+                Text(mensajeState.value, modifier = Modifier.padding(16.dp), fontSize = 18.sp, textAlign = TextAlign.Center)
+                Text(precioState.value, fontSize = 16.sp)
 
                 Button(
                     onClick = { onButtonClick() },
